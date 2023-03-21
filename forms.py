@@ -71,3 +71,15 @@ class AddNoteForm(FlaskForm):
         validators=[InputRequired()]
     )
 
+class UpdateNoteForm(FlaskForm):
+    """Form for updating note info."""
+
+    title = StringField(
+        "Title",
+        validators=[Length(max=100)]
+    )
+
+    content = TextAreaField(
+        "Title"
+    )
+

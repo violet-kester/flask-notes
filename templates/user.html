@@ -12,9 +12,11 @@
     <li>Email: {{ user.email }}</li>
   </ul>
 
+  <h4>My Notes:</h4>
+
   {% for note in user.notes %}
 
-    <h4>{{ note.title }}</h4>
+    <h6>{{ note.title }}</h6>
     <p>{{ note.content }}</p>
 
     <form>
@@ -30,9 +32,11 @@
         delete
       </button>
     </form>
+    <br>
 
   {% endfor %}
 
+  <hr>
   <a href="/users/{{ user.username }}/notes/add">
     <button>add a note</button>
   </a>

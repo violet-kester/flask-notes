@@ -5,7 +5,8 @@ from flask_debugtoolbar import DebugToolbarExtension
 from werkzeug.exceptions import Unauthorized
 
 from models import connect_db, db, User, Note
-from forms import RegisterForm, LoginForm, CSRFProtectForm, AddNoteForm
+from forms import (RegisterForm, LoginForm, CSRFProtectForm, AddNoteForm,
+    UpdateNoteForm)
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
@@ -85,7 +86,7 @@ def show_user_page(username):
 
     form = CSRFProtectForm()
     is_logged_in = "username" in session
-    is_authorized = session["username"] == username
+    is_authorized = session.get("username") == username
 
     if not is_logged_in or not is_authorized:
         # flash("You're not authorized!")
@@ -119,7 +120,7 @@ def delete_user(username):
 
     form = CSRFProtectForm()
     is_logged_in = "username" in session
-    is_authorized = session["username"] == username
+    is_authorized = session.get("username") == username
 
     if not is_logged_in or not is_authorized:
         # flash("You're not authorized!")
@@ -130,7 +131,7 @@ def delete_user(username):
         # Remove "username" if present, but no errors if it wasn't
         session.pop("username", None)
         user = User.query.get_or_404(username)
-        db.session.delete(user);
+        db.session.delete(user)
         db.session.commit()
 
         return redirect('/')
@@ -138,12 +139,19 @@ def delete_user(username):
 
 @app.route("/users/<username>/notes/add", methods=["GET", "POST"])
 def add_note(username):
-    """GET: Show user's notes.
-    POST: Add note and submit to database."""
+    """GET: Show form to add note.
+    POST: Add note and submit to database if authorized user is logged in."""
 
     form = AddNoteForm()
+    is_logged_in = "username" in session
+    is_authorized = session.get("username") == username
 
-    if form.validate_on_submit():
+    if not is_logged_in or not is_authorized:
+        # flash("You're not authorized!")
+        # return redirect("/")
+        raise Unauthorized()
+
+    elif form.validate_on_submit():
         title = form.title.data
         content = form.content.data
 
@@ -151,11 +159,60 @@ def add_note(username):
         db.session.add(note)
         db.session.commit()
 
-        # on successful login, redirect to secret page
+        # on successful note add, redirect to user page
         return redirect(f"/users/{username}")
 
     else:
         return render_template("add_note.html", form=form)
+
+@app.route("/notes/<note_id>/update", methods=["GET", "POST"])
+def update_note(note_id):
+    """GET: Show form to udpate note info.
+    POST: Handle form submission and update note in db if authorized user
+    is logged in."""
+
+    note = Note.query.get_or_404(note_id)
+    form = UpdateNoteForm(obj=note)
+
+    is_logged_in = "username" in session
+    is_authorized = session.get("username") == note.user.username
+
+    if not is_logged_in or not is_authorized:
+        # flash("You're not authorized!")
+        # return redirect("/")
+        raise Unauthorized()
+
+    elif form.validate_on_submit():
+        note.title = form.title.data
+        note.content = form.content.data
+
+        db.session.commit()
+
+        # on successful note update, redirect to user page
+        return redirect(f"/users/{note.user.username}")
+
+    else:
+        return render_template("update_note.html", form=form)
+
+@app.post("/notes/<note_id>/delete")
+def delete_note(note_id):
+    """Delete a note if authorized user is logged in"""
+
+    note = Note.query.get_or_404(note_id)
+    form = CSRFProtectForm()
+    is_logged_in = "username" in session
+    is_authorized = session.get("username") == note.user.username
+
+    if not is_logged_in or not is_authorized:
+        # flash("You're not authorized!")
+        # return redirect("/")
+        raise Unauthorized()
+
+    elif form.validate_on_submit():
+        db.session.delete(note)
+        db.session.commit()
+        flash(f"{note.title} deleted!")
+        return redirect(f"/users/{note.user.username}")
 
 
 
