@@ -4,7 +4,7 @@ from flask import Flask, render_template, redirect, session, flash
 from flask_debugtoolbar import DebugToolbarExtension
 
 from models import connect_db, db, User
-from forms import RegisterForm, LoginForm
+from forms import RegisterForm, LoginForm, CSRFProtectForm
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
@@ -45,7 +45,7 @@ def register():
         session["username"] = user.username
 
         # on successful login, redirect to secret page
-        return redirect("/secret")
+        return redirect(f"/users/{user.username}")
 
     else:
         return render_template("register.html", form=form)
@@ -65,12 +65,39 @@ def login():
         if user:
             session["username"] = user.username
             # on successful login, redirect to secret page
-            return redirect("/secret")
+            return redirect(f"/users/{user.username}")
 
         else:
             form.username.errors = ["Bad username/password combo"]
 
     return render_template("login.html", form=form)
+
+
+@app.get("/users/<username>")
+def show_user_page(username):
+    """Display a page with all info about user except password"""
+
+    # question: why not check session["username"] != username?
+    if "username" not in session:
+        flash("You must be logged in to view!")
+        return redirect("/")
+
+    else:
+        user = User.query.get_or_404(username)
+
+        return render_template("user.html", user=user)
+
+@app.post("/logout")
+def logout():
+
+    form = CSRFProtectForm()
+
+    if form.validate_on_submit():
+        # Remove "username" if present, but no errors if it wasn't
+        session.pop("username", None)
+
+    return redirect("/")
+
 
 
 
