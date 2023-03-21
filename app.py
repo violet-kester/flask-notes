@@ -2,9 +2,10 @@ import os
 
 from flask import Flask, render_template, redirect, session, flash
 from flask_debugtoolbar import DebugToolbarExtension
+from werkzeug.exceptions import Unauthorized
 
-from models import connect_db, db, User
-from forms import RegisterForm, LoginForm, CSRFProtectForm
+from models import connect_db, db, User, Note
+from forms import RegisterForm, LoginForm, CSRFProtectForm, AddNoteForm
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
@@ -14,6 +15,8 @@ app.config["SECRET_KEY"] = "abc123"
 
 connect_db(app)
 db.create_all()
+
+app.config['DEBUG_TB_INTERCEPT_REDIRECTS'] = False
 
 toolbar = DebugToolbarExtension(app)
 
@@ -85,8 +88,9 @@ def show_user_page(username):
     is_authorized = session["username"] == username
 
     if not is_logged_in or not is_authorized:
-        flash("You're not authorized!") # could raise not authorized resp
-        return redirect("/")
+        # flash("You're not authorized!")
+        # return redirect("/")
+        raise Unauthorized()
 
     else:
         user = User.query.get_or_404(username)
@@ -107,6 +111,52 @@ def logout():
 
     #TODO: display msg to user about why it failed
     return redirect("/")
+
+
+@app.post("/users/<username>/delete")
+def delete_user(username):
+    """Delete user account."""
+
+    form = CSRFProtectForm()
+    is_logged_in = "username" in session
+    is_authorized = session["username"] == username
+
+    if not is_logged_in or not is_authorized:
+        # flash("You're not authorized!")
+        # return redirect("/")
+        raise Unauthorized()
+
+    elif form.validate_on_submit():
+        # Remove "username" if present, but no errors if it wasn't
+        session.pop("username", None)
+        user = User.query.get_or_404(username)
+        db.session.delete(user);
+        db.session.commit()
+
+        return redirect('/')
+
+
+@app.route("/users/<username>/notes/add", methods=["GET", "POST"])
+def add_note(username):
+    """GET: Show user's notes.
+    POST: Add note and submit to database."""
+
+    form = AddNoteForm()
+
+    if form.validate_on_submit():
+        title = form.title.data
+        content = form.content.data
+
+        note = Note(title=title, content=content, owner=username)
+        db.session.add(note)
+        db.session.commit()
+
+        # on successful login, redirect to secret page
+        return redirect(f"/users/{username}")
+
+    else:
+        return render_template("add_note.html", form=form)
+
 
 
 
