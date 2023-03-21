@@ -27,7 +27,8 @@ def homepage():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    """Register user: produce form & handle form submission."""
+    """GET: Show register user form
+    POST: Register user - produce form & handle form submission."""
 
     form = RegisterForm()
 
@@ -52,7 +53,8 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    """Show user login form and process login"""
+    """GET: Show user login form
+    POST: process login"""
 
     form = LoginForm()
 
@@ -75,27 +77,35 @@ def login():
 
 @app.get("/users/<username>")
 def show_user_page(username):
-    """Display a page with all info about user except password"""
+    """If logged in as correct user, display a page with all info about
+    user except password"""
 
-    # question: why not check session["username"] != username?
-    if "username" not in session:
-        flash("You must be logged in to view!")
+    form = CSRFProtectForm()
+    is_logged_in = "username" in session
+    is_authorized = session["username"] == username
+
+    if not is_logged_in or not is_authorized:
+        flash("You're not authorized!") # could raise not authorized resp
         return redirect("/")
 
     else:
         user = User.query.get_or_404(username)
 
-        return render_template("user.html", user=user)
+        return render_template("user.html", user=user, form=form)
+
 
 @app.post("/logout")
 def logout():
+    """Log user out if username is in session"""
 
     form = CSRFProtectForm()
 
     if form.validate_on_submit():
         # Remove "username" if present, but no errors if it wasn't
         session.pop("username", None)
+        return redirect("/login")
 
+    #TODO: display msg to user about why it failed
     return redirect("/")
 
 
