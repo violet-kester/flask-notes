@@ -85,10 +85,9 @@ def show_user_page(username):
     user except password"""
 
     form = CSRFProtectForm()
-    is_logged_in = "username" in session
     is_authorized = session.get("username") == username
 
-    if not is_logged_in or not is_authorized:
+    if not is_authorized:
         # flash("You're not authorized!")
         # return redirect("/")
         raise Unauthorized()
@@ -116,13 +115,12 @@ def logout():
 
 @app.post("/users/<username>/delete")
 def delete_user(username):
-    """Delete user account."""
+    """Delete user account of logged-in user."""
 
     form = CSRFProtectForm()
-    is_logged_in = "username" in session
     is_authorized = session.get("username") == username
 
-    if not is_logged_in or not is_authorized:
+    if not is_authorized:
         # flash("You're not authorized!")
         # return redirect("/")
         raise Unauthorized()
@@ -143,10 +141,9 @@ def add_note(username):
     POST: Add note and submit to database if authorized user is logged in."""
 
     form = AddNoteForm()
-    is_logged_in = "username" in session
     is_authorized = session.get("username") == username
 
-    if not is_logged_in or not is_authorized:
+    if not is_authorized:
         # flash("You're not authorized!")
         # return redirect("/")
         raise Unauthorized()
@@ -173,11 +170,9 @@ def update_note(note_id):
 
     note = Note.query.get_or_404(note_id)
     form = UpdateNoteForm(obj=note)
-
-    is_logged_in = "username" in session
     is_authorized = session.get("username") == note.user.username
 
-    if not is_logged_in or not is_authorized:
+    if not is_authorized:
         # flash("You're not authorized!")
         # return redirect("/")
         raise Unauthorized()
@@ -200,10 +195,9 @@ def delete_note(note_id):
 
     note = Note.query.get_or_404(note_id)
     form = CSRFProtectForm()
-    is_logged_in = "username" in session
     is_authorized = session.get("username") == note.user.username
 
-    if not is_logged_in or not is_authorized:
+    if not is_authorized:
         # flash("You're not authorized!")
         # return redirect("/")
         raise Unauthorized()
